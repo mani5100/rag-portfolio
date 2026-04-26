@@ -1,0 +1,42 @@
+[
+  {
+    "input": "When did the Apollo 11 mission land on the Moon?",
+    "expected_output": "Apollo 11 landed on the Moon on July 20, 1969.",
+    "retrieval_context": [
+      "Apollo 11 was the spaceflight that first landed humans on the Moon. Commander Neil Armstrong and lunar module pilot Buzz Aldrin landed the Apollo Lunar Module Eagle on July 20, 1969, at 20:17 UTC. Armstrong became the first person to step onto the lunar surface six hours and 39 minutes later on July 21, 1969, at 02:56 UTC. Apollo 11 was launched by a Saturn V rocket from Kennedy Space Center in Florida on July 16, 1969."
+    ],
+    "actual_output": "The Apollo 11 mission landed on the Moon on July 20, 1969, at 20:17 UTC. Commander Neil Armstrong and lunar module pilot Buzz Aldrin touched down in the Apollo Lunar Module Eagle, with Armstrong becoming the first person to step onto the lunar surface."
+  },
+  {
+    "input": "What is photosynthesis and how does it work?",
+    "expected_output": "Photosynthesis is the process by which plants use sunlight, water, and carbon dioxide to produce glucose and oxygen.",
+    "retrieval_context": [
+      "Photosynthesis is a biological process used by plants, algae, and some bacteria to convert light energy, usually from the Sun, into chemical energy stored in glucose. The process takes place primarily in the chloroplasts of plant cells, using the green pigment chlorophyll to absorb light. The overall equation is: 6CO2 + 6H2O + light energy → C6H12O6 + 6O2. It occurs in two stages: the light-dependent reactions in the thylakoid membranes, which produce ATP and NADPH, and the Calvin cycle in the stroma, which uses those products to fix carbon dioxide into glucose."
+    ],
+    "actual_output": "Photosynthesis is a biological process by which plants, algae, and some bacteria convert light energy into chemical energy stored as glucose. Using chlorophyll in their chloroplasts, they absorb sunlight and combine carbon dioxide and water to produce glucose and oxygen. The reaction is summarised as: 6CO2 + 6H2O + light energy produces C6H12O6 + 6O2. It involves two stages: light-dependent reactions that generate ATP and NADPH, followed by the Calvin cycle that fixes CO2 into glucose."
+  },
+  {
+    "input": "What is a transformer model in machine learning?",
+    "expected_output": "A transformer is a deep learning architecture based on self-attention mechanisms, introduced in the 2017 paper 'Attention Is All You Need', widely used for NLP tasks.",
+    "retrieval_context": [
+      "The transformer is a deep learning architecture introduced in the 2017 paper 'Attention Is All You Need' by Vaswani et al. Unlike recurrent neural networks, transformers process entire sequences in parallel using a mechanism called self-attention, which allows each token to attend to every other token in the sequence. Transformers consist of an encoder and a decoder, each made up of stacked layers containing multi-head self-attention and feed-forward sub-layers. They have become the dominant architecture for natural language processing tasks such as translation, summarization, and question answering, and are the foundation of large language models like GPT and BERT."
+    ],
+    "actual_output": "A transformer is a deep learning architecture introduced in the 2017 paper 'Attention Is All You Need' by Vaswani et al. It uses a self-attention mechanism that allows every token in a sequence to attend to every other token simultaneously, enabling parallel processing unlike recurrent networks. Transformers are built from stacked encoder and decoder layers with multi-head attention and feed-forward sub-layers. They are the foundation of modern large language models such as GPT and BERT, and are widely used for NLP tasks including translation, summarization, and question answering."
+  },
+  {
+    "input": "How does the Amazon River compare to the Nile River in terms of length and water volume?",
+    "expected_output": "The Nile is longer at approximately 6,650 km, but the Amazon carries far more water, discharging about 20% of all freshwater that flows into the world's oceans.",
+    "retrieval_context": [
+      "The Nile River in northeastern Africa is approximately 6,650 kilometres (4,130 miles) long, making it the longest river in the world by most measurements. The Amazon River in South America measures approximately 6,400 kilometres (3,976 miles) in length. However, the Amazon vastly surpasses the Nile in water discharge: the Amazon discharges around 209,000 cubic metres of water per second into the Atlantic Ocean, accounting for roughly 20% of all freshwater discharged into the world's oceans. By contrast, the Nile discharges only about 2,830 cubic metres per second, making the Amazon's flow approximately 74 times greater."
+    ],
+    "actual_output": "The Nile is longer than the Amazon, measuring approximately 6,650 km compared to the Amazon's 6,400 km, making the Nile the longest river in the world by most measurements. However, the Amazon is far superior in water volume: it discharges around 209,000 cubic metres per second into the Atlantic Ocean, roughly 20% of all freshwater entering the world's oceans, which is approximately 74 times more than the Nile's discharge of about 2,830 cubic metres per second."
+  },
+  {
+    "input": "What are the steps to train a supervised machine learning model?",
+    "expected_output": "Training a supervised ML model involves collecting labelled data, splitting it into train/validation/test sets, choosing a model, training it, evaluating performance, tuning hyperparameters, and deploying the final model.",
+    "retrieval_context": [
+      "Training a supervised machine learning model follows a structured process. First, collect and label a dataset where each example has a known output. Second, preprocess the data by handling missing values, encoding categorical variables, and scaling features. Third, split the data into training, validation, and test sets, commonly using an 80/10/10 or 70/15/15 ratio. Fourth, select a model architecture appropriate for the task, such as logistic regression for classification or a neural network for complex patterns. Fifth, fit the model on the training set by minimising a loss function using an optimisation algorithm like stochastic gradient descent. Sixth, evaluate performance on the validation set using metrics such as accuracy, F1-score, or RMSE. Seventh, tune hyperparameters (e.g., learning rate, depth of tree) to improve generalisation. Finally, assess the model on the held-out test set to estimate real-world performance, then deploy the trained model to a production environment."
+    ],
+    "actual_output": "Training a supervised machine learning model involves the following steps: (1) Collect and label a dataset with known outputs. (2) Preprocess the data by handling missing values, encoding categorical variables, and scaling features. (3) Split the data into training, validation, and test sets. (4) Select an appropriate model architecture for the task. (5) Train the model on the training set by minimising a loss function with an optimisation algorithm such as stochastic gradient descent. (6) Evaluate performance on the validation set using metrics like accuracy or F1-score. (7) Tune hyperparameters to improve generalisation. (8) Assess final performance on the held-out test set and deploy the model to production."
+  }
+]

@@ -1,0 +1,5 @@
+{
+  "faithfulness_mean": null,
+  "answer_relevancy_mean": null,
+  "note": "Populate after first real evaluation run with: pytest -m evaluation"
+}
