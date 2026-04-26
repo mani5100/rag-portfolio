@@ -17,8 +17,10 @@ from pathlib import Path
 from typing import AsyncIterator
 
 from dotenv import load_dotenv
-from fastapi import FastAPI, HTTPException, UploadFile
+from fastapi import FastAPI, HTTPException, Request, UploadFile
 from fastapi.responses import JSONResponse, StreamingResponse
+from fastapi.staticfiles import StaticFiles
+from fastapi.templating import Jinja2Templates
 
 from rag_porfolio.chain import RAGChain
 from rag_porfolio.ingestion import chunk_documents, load_document
@@ -77,6 +79,14 @@ async def lifespan(app: FastAPI):
 # ---------------------------------------------------------------------------
 
 app = FastAPI(title="RAG Portfolio API", lifespan=lifespan)
+
+app.mount("/static", StaticFiles(directory="src/rag_porfolio/static"), name="static")
+templates = Jinja2Templates(directory="src/rag_porfolio/templates")
+
+
+@app.get("/", include_in_schema=False)
+async def index(request: Request):
+    return templates.TemplateResponse("index.html", {"request": request})
 
 # ---------------------------------------------------------------------------
 # Internal helpers

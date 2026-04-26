@@ -1,0 +1,235 @@
+{% extends "base.html" %}
+
+{% block content %}
+<div class="flex gap-6 h-[calc(100vh-120px)]">
+
+    <!-- ================================================================
+         LEFT PANEL — Upload + Document List (~30%)
+    ================================================================ -->
+    <aside class="w-80 flex-shrink-0 flex flex-col gap-4">
+
+        <!-- Upload Section -->
+        <div class="card bg-base-100 shadow-sm">
+            <div class="card-body p-4">
+                <h2 class="card-title text-base">Upload Document</h2>
+
+                <form
+                    hx-post="/upload"
+                    hx-encoding="multipart/form-data"
+                    hx-on::after-request="handleUploadResponse(event)"
+                    class="flex flex-col gap-3"
+                >
+                    <input
+                        type="file"
+                        name="file"
+                        accept=".pdf,.docx,.txt"
+                        class="file-input file-input-bordered file-input-sm w-full"
+                        required
+                    />
+                    <button type="submit" class="btn btn-primary btn-sm w-full">
+                        Index Document
+                    </button>
+                </form>
+
+                <div id="upload-status" class="mt-1"></div>
+            </div>
+        </div>
+
+        <!-- Document List Section -->
+        <div class="card bg-base-100 shadow-sm flex-1 overflow-hidden">
+            <div class="card-body p-4 flex flex-col h-full">
+                <h2 class="card-title text-base">Indexed Documents</h2>
+                <div class="divider my-1"></div>
+                <ul id="doc-list" class="flex-1 overflow-y-auto flex flex-col gap-1">
+                    <li class="text-base-content/50 text-sm">Loading...</li>
+                </ul>
+            </div>
+        </div>
+
+    </aside>
+
+    <!-- ================================================================
+         RIGHT PANEL — Chat Interface (~70%)
+    ================================================================ -->
+    <section class="flex-1 flex flex-col card bg-base-100 shadow-sm overflow-hidden">
+        <div class="card-body p-4 flex flex-col h-full">
+            <h2 class="card-title text-base mb-2">Ask a Question</h2>
+
+            <!-- Scrollable message area -->
+            <div
+                id="chat-messages"
+                class="flex-1 overflow-y-auto flex flex-col gap-2 pr-1"
+            >
+                <!-- Welcome placeholder -->
+                <div class="chat chat-start">
+                    <div class="chat-bubble chat-bubble-neutral text-sm">
+                        Hello! Upload a document on the left, then ask me anything about it.
+                    </div>
+                </div>
+            </div>
+
+            <div class="divider my-2"></div>
+
+            <!-- Input form -->
+            <form id="chat-form" class="flex gap-2">
+                <input
+                    id="query-input"
+                    type="text"
+                    name="q"
+                    placeholder="Ask a question about your documents..."
+                    class="input input-bordered flex-1 input-sm"
+                    autocomplete="off"
+                />
+                <button type="submit" class="btn btn-primary btn-sm px-6">
+                    Send
+                </button>
+            </form>
+        </div>
+    </section>
+
+</div>
+
+<!-- ================================================================
+     JavaScript
+================================================================ -->
+<script>
+// ---------------------------------------------------------------------------
+// Document list
+// ---------------------------------------------------------------------------
+
+async function loadDocuments() {
+    const res = await fetch('/documents');
+    const docs = await res.json();
+    const list = document.getElementById('doc-list');
+    if (docs.length === 0) {
+        list.innerHTML = '<li class="text-base-content/50 text-sm">No documents indexed yet.</li>';
+        return;
+    }
+    list.innerHTML = docs.map(d => `
+        <li class="flex justify-between items-center py-1 border-b border-base-200 last:border-0">
+            <span class="text-sm truncate flex-1 mr-2" title="${d.filename}">
+                ${d.filename}
+                <span class="badge badge-ghost badge-sm ml-1">${d.chunk_count} chunks</span>
+            </span>
+            <button
+                onclick="deleteDoc('${d.filename}')"
+                class="btn btn-ghost btn-xs text-error flex-shrink-0"
+                title="Delete ${d.filename}"
+            >&#x2715;</button>
+        </li>
+    `).join('');
+}
+
+async function deleteDoc(filename) {
+    await fetch('/documents/' + encodeURIComponent(filename), { method: 'DELETE' });
+    loadDocuments();
+}
+
+// ---------------------------------------------------------------------------
+// Upload response handler (called by hx-on::after-request)
+// ---------------------------------------------------------------------------
+
+function handleUploadResponse(event) {
+    const status = document.getElementById('upload-status');
+    if (event.detail.successful) {
+        const data = JSON.parse(event.detail.xhr.responseText);
+        status.innerHTML = `<div class="alert alert-success text-sm py-2 mt-1">Indexed "${data.filename}" (${data.chunk_count} chunks)</div>`;
+        loadDocuments();
+        // Clear the file input
+        event.target.reset();
+    } else {
+        let msg = 'Upload failed.';
+        try {
+            const data = JSON.parse(event.detail.xhr.responseText);
+            msg = data.message || data.error || msg;
+        } catch (_) {}
+        status.innerHTML = `<div class="alert alert-error text-sm py-2 mt-1">${msg}</div>`;
+    }
+    // Auto-clear the status message after 5 seconds
+    setTimeout(() => { status.innerHTML = ''; }, 5000);
+}
+
+// ---------------------------------------------------------------------------
+// Chat — SSE streaming via Fetch ReadableStream
+// ---------------------------------------------------------------------------
+
+document.getElementById('chat-form').addEventListener('submit', async function(e) {
+    e.preventDefault();
+    const input = document.getElementById('query-input');
+    const query = input.value.trim();
+    if (!query) return;
+    input.value = '';
+
+    const chatMessages = document.getElementById('chat-messages');
+
+    // User bubble
+    const userBubble = document.createElement('div');
+    userBubble.className = 'chat chat-end';
+    userBubble.innerHTML = `<div class="chat-bubble chat-bubble-primary text-sm">${escapeHtml(query)}</div>`;
+    chatMessages.appendChild(userBubble);
+    chatMessages.scrollTop = chatMessages.scrollHeight;
+
+    // AI bubble placeholder
+    const aiBubble = document.createElement('div');
+    aiBubble.className = 'chat chat-start';
+    const aiId = 'ai-' + Date.now();
+    aiBubble.innerHTML = `<div class="chat-bubble text-sm" id="${aiId}"><span class="loading loading-dots loading-xs"></span></div>`;
+    chatMessages.appendChild(aiBubble);
+    chatMessages.scrollTop = chatMessages.scrollHeight;
+
+    const aiDiv = document.getElementById(aiId);
+    let firstToken = true;
+
+    try {
+        const response = await fetch('/query?q=' + encodeURIComponent(query));
+        const reader = response.body.getReader();
+        const decoder = new TextDecoder();
+
+        while (true) {
+            const { done, value } = await reader.read();
+            if (done) break;
+
+            const text = decoder.decode(value, { stream: true });
+            const lines = text.split('\n');
+
+            for (const line of lines) {
+                if (line.startsWith('data: ')) {
+                    const token = line.slice(6);
+                    if (token === '[DONE]') break;
+                    if (firstToken) {
+                        aiDiv.textContent = '';
+                        firstToken = false;
+                    }
+                    aiDiv.textContent += token;
+                    chatMessages.scrollTop = chatMessages.scrollHeight;
+                }
+            }
+        }
+
+        // If no tokens were received at all, show a fallback
+        if (firstToken) {
+            aiDiv.textContent = '(No response received.)';
+        }
+
+    } catch (err) {
+        aiDiv.textContent = 'Error: ' + err.message;
+    }
+});
+
+// ---------------------------------------------------------------------------
+// Utility
+// ---------------------------------------------------------------------------
+
+function escapeHtml(text) {
+    const div = document.createElement('div');
+    div.appendChild(document.createTextNode(text));
+    return div.innerHTML;
+}
+
+// ---------------------------------------------------------------------------
+// Init
+// ---------------------------------------------------------------------------
+
+window.addEventListener('load', loadDocuments);
+</script>
+{% endblock %}
