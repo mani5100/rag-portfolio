@@ -1,0 +1,22 @@
+# Python-generated files
+__pycache__/
+*.py[oc]
+build/
+dist/
+wheels/
+*.egg-info
+
+# Virtual environments
+.venv
+
+# Environment secrets
+.env
+
+# Project-specific ignored directories
+uploads/
+vectorstore/
+
+# Python cache
+__pycache__/
+*.pyc
+.pytest_cache/
