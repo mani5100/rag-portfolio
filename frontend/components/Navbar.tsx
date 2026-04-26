@@ -5,22 +5,22 @@ import { Bot, Briefcase, Code2, Globe, Users } from "lucide-react";
 const SOCIAL_LINKS = [
   {
     label: "GitHub",
-    href: "https://github.com",
+    href: "https://github.com/mani5100/",
     icon: Code2,
   },
   {
     label: "LinkedIn",
-    href: "https://linkedin.com",
+    href: "https://www.linkedin.com/in/abdulrehman-shoukat",
     icon: Users,
   },
   {
     label: "Upwork",
-    href: "https://upwork.com",
+    href: "https://upwork.com/freelancers/abdulrehmanshoukat",
     icon: Briefcase,
   },
   {
     label: "Website",
-    href: "https://example.com",
+    href: "https://abdulrehmanshoukat.com/",
     icon: Globe,
   },
 ] as const;
