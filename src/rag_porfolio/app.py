@@ -6,18 +6,26 @@ Endpoints:
 - GET  /query          — stream an answer via SSE
 - GET  /documents      — list all indexed documents
 - DELETE /documents/{filename} — remove a document
+
+Sessions are browser-tab-scoped (X-Session-ID header). All state is
+in-memory; nothing is written to disk. Sessions expire after 30 min of
+inactivity.
 """
 
 from __future__ import annotations
 
-import os
+import asyncio
+import tempfile
+import time
 from contextlib import asynccontextmanager
+from dataclasses import dataclass, field
 from datetime import datetime, timezone
 from pathlib import Path
 from typing import AsyncIterator
 
+import chromadb
 from dotenv import load_dotenv
-from fastapi import FastAPI, HTTPException, Request, UploadFile
+from fastapi import FastAPI, Header, Request, UploadFile
 from fastapi.responses import JSONResponse, StreamingResponse
 from fastapi.staticfiles import StaticFiles
 from fastapi.templating import Jinja2Templates
@@ -34,44 +42,66 @@ from rag_porfolio.store import EmbeddingService, VectorStore
 MAX_FILE_SIZE = 10 * 1024 * 1024  # 10 MB
 MAX_DOCUMENTS = 20
 ALLOWED_EXTENSIONS = {".pdf", ".docx", ".txt"}
-UPLOADS_DIR = "uploads"
+SESSION_TTL = 1800  # 30 minutes
 
 # ---------------------------------------------------------------------------
-# Module-level state (singletons + document registry)
+# Per-session state
 # ---------------------------------------------------------------------------
 
-_store: VectorStore | None = None
-_retriever: Retriever | None = None
-_reranker: Reranker | None = None
-_chain: RAGChain | None = None
 
-# Maps filename → {"filename": str, "chunk_count": int, "indexed_at": str}
-_indexed_docs: dict[str, dict] = {}
+@dataclass
+class Session:
+    store: VectorStore
+    retriever: Retriever
+    reranker: Reranker
+    chain: RAGChain
+    indexed_docs: dict = field(default_factory=dict)
+    last_accessed: float = field(default_factory=time.monotonic)
+
+
+_embedding: EmbeddingService | None = None
+_sessions: dict[str, Session] = {}
+
+
+def _create_session() -> Session:
+    client = chromadb.EphemeralClient()
+    store = VectorStore(embedding=_embedding, chroma_client=client)
+    retriever = Retriever(vector_store=store)
+    reranker = Reranker(retriever=retriever)
+    chain = RAGChain(reranker=reranker)
+    return Session(store=store, retriever=retriever, reranker=reranker, chain=chain)
+
+
+def _get_session(session_id: str) -> Session:
+    if session_id not in _sessions:
+        _sessions[session_id] = _create_session()
+    sess = _sessions[session_id]
+    sess.last_accessed = time.monotonic()
+    return sess
+
+
+async def _cleanup_sessions() -> None:
+    while True:
+        await asyncio.sleep(300)  # check every 5 min
+        cutoff = time.monotonic() - SESSION_TTL
+        expired = [sid for sid, s in list(_sessions.items()) if s.last_accessed < cutoff]
+        for sid in expired:
+            del _sessions[sid]
+
 
 # ---------------------------------------------------------------------------
-# Lifespan — initialize singletons on startup
+# Lifespan
 # ---------------------------------------------------------------------------
 
 
 @asynccontextmanager
 async def lifespan(app: FastAPI):
-    """Initialize all RAG components on startup."""
-    global _store, _retriever, _reranker, _chain
-
+    global _embedding
     load_dotenv()
-
-    embedding = EmbeddingService()
-    _store = VectorStore(embedding=embedding)
-    _retriever = Retriever(vector_store=_store)
-    _reranker = Reranker(retriever=_retriever)
-    _chain = RAGChain(reranker=_reranker)
-
-    # Ensure uploads directory exists
-    Path(UPLOADS_DIR).mkdir(parents=True, exist_ok=True)
-
-    yield  # application runs here
-
-    # Teardown (nothing needed for now)
+    _embedding = EmbeddingService()
+    cleanup_task = asyncio.create_task(_cleanup_sessions())
+    yield
+    cleanup_task.cancel()
 
 
 # ---------------------------------------------------------------------------
@@ -88,22 +118,6 @@ templates = Jinja2Templates(directory="src/rag_porfolio/templates")
 async def index(request: Request):
     return templates.TemplateResponse(request, "index.html")
 
-# ---------------------------------------------------------------------------
-# Internal helpers
-# ---------------------------------------------------------------------------
-
-
-async def _save_upload_file(upload_file: UploadFile, dest_dir: str = UPLOADS_DIR) -> str:
-    """Write the uploaded file to disk and return the file path."""
-    Path(dest_dir).mkdir(parents=True, exist_ok=True)
-    dest = os.path.join(dest_dir, upload_file.filename)
-    content = await upload_file.read()
-    with open(dest, "wb") as f:
-        f.write(content)
-    # Reset the stream position so callers can read size again if needed
-    await upload_file.seek(0)
-    return dest
-
 
 # ---------------------------------------------------------------------------
 # POST /upload
@@ -111,7 +125,10 @@ async def _save_upload_file(upload_file: UploadFile, dest_dir: str = UPLOADS_DIR
 
 
 @app.post("/upload")
-async def upload_document(file: UploadFile):
+async def upload_document(
+    file: UploadFile,
+    session_id: str = Header(alias="X-Session-ID", default=""),
+):
     """Upload and index a document.
 
     Validations (in order):
@@ -133,7 +150,7 @@ async def upload_document(file: UploadFile):
             },
         )
 
-    # --- 2. Size check (read content into memory) ---
+    # --- 2. Size check ---
     content = await file.read()
     if len(content) > MAX_FILE_SIZE:
         return JSONResponse(
@@ -143,11 +160,11 @@ async def upload_document(file: UploadFile):
                 "message": "Maximum file size is 10MB.",
             },
         )
-    # Seek back so downstream reads work
-    await file.seek(0)
+
+    sess = _get_session(session_id)
 
     # --- 3. Collection capacity check ---
-    if len(_indexed_docs) >= MAX_DOCUMENTS:
+    if len(sess.indexed_docs) >= MAX_DOCUMENTS:
         return JSONResponse(
             status_code=400,
             content={
@@ -157,7 +174,7 @@ async def upload_document(file: UploadFile):
         )
 
     # --- 4. Duplicate check ---
-    if filename in _indexed_docs or _store.is_document_indexed(filename):
+    if filename in sess.indexed_docs:
         return JSONResponse(
             status_code=409,
             content={
@@ -166,16 +183,18 @@ async def upload_document(file: UploadFile):
             },
         )
 
-    # --- Save file to disk ---
-    filepath = await _save_upload_file(file)
+    # --- Write to temp file, ingest, then delete ---
+    with tempfile.NamedTemporaryFile(suffix=ext, delete=False) as tmp:
+        tmp.write(content)
+        tmp_path = tmp.name
+    try:
+        docs = load_document(tmp_path)
+        chunks = chunk_documents(docs)
+        sess.store.add_documents(chunks)
+    finally:
+        Path(tmp_path).unlink(missing_ok=True)
 
-    # --- Ingest pipeline ---
-    docs = load_document(filepath)
-    chunks = chunk_documents(docs)
-    _store.add_documents(chunks)
-
-    # --- Track in registry ---
-    _indexed_docs[filename] = {
+    sess.indexed_docs[filename] = {
         "filename": filename,
         "chunk_count": len(chunks),
         "indexed_at": datetime.now(tz=timezone.utc).isoformat(),
@@ -194,7 +213,10 @@ async def upload_document(file: UploadFile):
 
 
 @app.get("/query")
-async def query(q: str):
+async def query(
+    q: str,
+    session_id: str = Header(alias="X-Session-ID", default=""),
+):
     """Stream an answer to *q* as Server-Sent Events."""
     if not q or not q.strip():
         return JSONResponse(
@@ -202,8 +224,10 @@ async def query(q: str):
             content={"error": "empty_query"},
         )
 
+    sess = _get_session(session_id)
+
     async def event_stream() -> AsyncIterator[str]:
-        async for token in _chain.astream(q):
+        async for token in sess.chain.astream(q):
             yield f"data: {token}\n\n"
         yield "data: [DONE]\n\n"
 
@@ -216,9 +240,12 @@ async def query(q: str):
 
 
 @app.get("/documents")
-async def list_documents():
+async def list_documents(
+    session_id: str = Header(alias="X-Session-ID", default=""),
+):
     """Return a list of all indexed documents."""
-    return list(_indexed_docs.values())
+    sess = _get_session(session_id)
+    return list(sess.indexed_docs.values())
 
 
 # ---------------------------------------------------------------------------
@@ -227,9 +254,14 @@ async def list_documents():
 
 
 @app.delete("/documents/{filename}")
-async def delete_document(filename: str):
+async def delete_document(
+    filename: str,
+    session_id: str = Header(alias="X-Session-ID", default=""),
+):
     """Delete a document from the index and vector store."""
-    if filename not in _indexed_docs:
+    sess = _get_session(session_id)
+
+    if filename not in sess.indexed_docs:
         return JSONResponse(
             status_code=404,
             content={
@@ -238,7 +270,7 @@ async def delete_document(filename: str):
             },
         )
 
-    _store.delete_by_source(filename)
-    del _indexed_docs[filename]
+    sess.store.delete_by_source(filename)
+    del sess.indexed_docs[filename]
 
     return {"status": "deleted", "filename": filename}
