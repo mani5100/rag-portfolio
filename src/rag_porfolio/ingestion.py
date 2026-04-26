@@ -71,7 +71,7 @@ def load_document(file_path: str) -> list[Document]:
     ext = Path(file_path).suffix.lower()
 
     if ext == ".pdf":
-        loader = PyPDFLoader(file_path, extraction_mode="page")
+        loader = PyPDFLoader(file_path)
     elif ext == ".docx":
         loader = UnstructuredWordDocumentLoader(file_path, mode="elements")
     elif ext == ".txt":

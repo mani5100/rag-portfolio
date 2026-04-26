@@ -57,7 +57,7 @@ def test_file_too_large_raises(tmp_path, monkeypatch):
 
 @pytest.mark.unit
 def test_pdf_loader_dispatches_correctly(tmp_path, monkeypatch):
-    """PDF files should dispatch to PyPDFLoader with extraction_mode='page'."""
+    """PDF files should dispatch to PyPDFLoader."""
     pdf_file = tmp_path / "sample.pdf"
     pdf_file.write_bytes(b"%PDF-1.4 fake pdf content")
 
@@ -70,7 +70,7 @@ def test_pdf_loader_dispatches_correctly(tmp_path, monkeypatch):
 
     docs = load_document(str(pdf_file))
 
-    mock_loader_class.assert_called_once_with(str(pdf_file), extraction_mode="page")
+    mock_loader_class.assert_called_once_with(str(pdf_file))
     assert len(docs) == 1
     assert docs[0].metadata["source"] == "sample.pdf"
 
