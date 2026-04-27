@@ -1,0 +1,19 @@
+name: Deploy RAG Portfolio
+on:
+  push:
+    branches:
+      - deployment
+jobs:
+  deploy:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v3
+        with:
+          host: ${{ secrets.CONTABO_VPS_HOST }}
+          username: ${{ secrets.CONTABO_VPS_USER }}
+          key: ${{ secrets.CONTABO_VPS_SECRET }}
+          script: |
+            cd /root/rag-portfolio
+            git pull origin deployment
+            docker compose up --build -d
