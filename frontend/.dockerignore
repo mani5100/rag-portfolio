@@ -1,0 +1,8 @@
+.next/
+node_modules/
+next-env.d.ts
+AGENTS.md
+CLAUDE.md
+.gitignore
+components.json
+tsconfig.tsbuildinfo
