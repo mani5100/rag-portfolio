@@ -1,14 +1,20 @@
 name: Deploy RAG Portfolio
+
 on:
   push:
     branches:
       - deployment
+
 jobs:
   deploy:
     runs-on: ubuntu-latest
+
     steps:
       - name: Checkout code
         uses: actions/checkout@v3
+
+      - name: Deploy to VPS
+        uses: appleboy/ssh-action@v0.1.5
         with:
           host: ${{ secrets.CONTABO_VPS_HOST }}
           username: ${{ secrets.CONTABO_VPS_USER }}
@@ -16,4 +22,5 @@ jobs:
           script: |
             cd /root/rag-portfolio
             git pull origin deployment
+            docker compose down
             docker compose up --build -d
