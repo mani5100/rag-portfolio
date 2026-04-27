@@ -12,6 +12,8 @@ async function proxy(req: NextRequest, ctx: RouteContext<"/api/[...path]">) {
 
   const headers = new Headers(req.headers);
   headers.delete("host");
+  headers.delete("connection");
+  headers.delete("upgrade");
 
   const upstream = await fetch(backendUrl, {
     method: req.method,
