@@ -3,7 +3,7 @@ import type { NextRequest } from "next/server";
 // Never cache — these are dynamic API calls (including SSE streams).
 export const dynamic = "force-dynamic";
 
-const BACKEND = "http://localhost:8000";
+const BACKEND = process.env.BACKEND_URL || "http://localhost:8000";
 
 async function proxy(req: NextRequest, ctx: RouteContext<"/api/[...path]">) {
   const { path } = await ctx.params;
