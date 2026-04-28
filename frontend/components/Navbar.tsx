@@ -1,6 +1,11 @@
 "use client";
 
-import { Bot, Briefcase, Code2, Globe, Users } from "lucide-react";
+import { Bot, Briefcase, Code2, Globe, Menu, Users, X } from "lucide-react";
+
+interface NavbarProps {
+  sidebarOpen?: boolean;
+  onToggleSidebar?: () => void;
+}
 
 const SOCIAL_LINKS = [
   {
@@ -25,12 +30,21 @@ const SOCIAL_LINKS = [
   },
 ] as const;
 
-export function Navbar() {
+export function Navbar({ sidebarOpen, onToggleSidebar }: NavbarProps) {
   return (
-    <header className="sticky top-0 z-50 flex h-14 items-center justify-between border-b border-[#2a2d3a] bg-[#0f1117]/95 px-6 backdrop-blur">
+    <header className="sticky top-0 z-50 flex h-14 items-center justify-between border-b border-[#2a2d3a] bg-[#0f1117]/95 px-4 backdrop-blur">
+      {/* Hamburger (mobile only) */}
+      <button
+        className="flex h-10 w-10 items-center justify-center rounded-lg text-[#64748b] hover:bg-[#1a1d27] hover:text-[#f1f5f9] md:hidden"
+        onClick={onToggleSidebar}
+        aria-label={sidebarOpen ? "Close sidebar" : "Open sidebar"}
+      >
+        {sidebarOpen ? <X className="h-5 w-5" /> : <Menu className="h-5 w-5" />}
+      </button>
+
       {/* Brand */}
-      <div className="flex items-center gap-2">
-        <Bot className="h-5 w-5 text-[#06b6d4]" />
+      <div className="flex flex-1 min-w-0 items-center gap-2 md:flex-none">
+        <Bot className="h-5 w-5 shrink-0 text-[#06b6d4]" />
         <span className="text-sm font-semibold tracking-wide text-[#06b6d4]">
           RAG Portfolio
         </span>
@@ -45,7 +59,7 @@ export function Navbar() {
             target="_blank"
             rel="noopener noreferrer"
             aria-label={label}
-            className="group flex items-center gap-0 overflow-hidden rounded-full border border-[#2a2d3a] bg-[#1a1d27] px-2 py-1.5
+            className="group flex items-center gap-0 overflow-hidden rounded-full border border-[#2a2d3a] bg-[#1a1d27] px-2 py-2
                        transition-all duration-300 ease-in-out
                        hover:gap-2 hover:border-[#06b6d4]/40 hover:bg-[#06b6d4]/5 hover:px-3"
           >

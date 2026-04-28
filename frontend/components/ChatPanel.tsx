@@ -113,7 +113,7 @@ export function ChatPanel({ sessionId }: { sessionId: string }) {
           onClick={sendMessage}
           disabled={!input.trim() || isStreaming}
           size="icon"
-          className="h-8 w-8 shrink-0 rounded-lg bg-[#06b6d4] text-[#0f1117] hover:bg-[#0e7490] disabled:opacity-40"
+          className="h-10 w-10 sm:h-8 sm:w-8 shrink-0 rounded-lg bg-[#06b6d4] text-[#0f1117] hover:bg-[#0e7490] disabled:opacity-40"
         >
           {isStreaming ? (
             <Loader2 className="h-4 w-4 animate-spin" />
@@ -122,7 +122,7 @@ export function ChatPanel({ sessionId }: { sessionId: string }) {
           )}
         </Button>
       </div>
-      <p className="mt-1.5 text-center text-[10px] text-[#64748b]">
+      <p className="hidden sm:block mt-1.5 text-center text-[10px] text-[#64748b]">
         Press Enter to send · Shift+Enter for new line
       </p>
     </div>

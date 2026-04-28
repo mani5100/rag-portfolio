@@ -1,7 +1,6 @@
 import type { Metadata } from "next";
 import { Geist, Geist_Mono } from "next/font/google";
 import "./globals.css";
-import { Navbar } from "@/components/Navbar";
 import { TooltipProvider } from "@/components/ui/tooltip";
 
 const geistSans = Geist({
@@ -31,7 +30,6 @@ export default function RootLayout({
     >
       <body className="flex h-full flex-col bg-[#0f1117] text-[#f1f5f9]">
         <TooltipProvider delay={200}>
-          <Navbar />
           <main className="flex flex-1 overflow-hidden">{children}</main>
         </TooltipProvider>
       </body>

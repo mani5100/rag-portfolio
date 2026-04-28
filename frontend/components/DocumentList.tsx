@@ -47,7 +47,7 @@ export function DocumentList({ sessionId, refreshKey }: DocumentListProps) {
   }
 
   return (
-    <div className="flex flex-col gap-2">
+    <div className="flex flex-1 min-h-0 flex-col gap-2">
       <h2 className="px-1 text-xs font-semibold uppercase tracking-widest text-[#64748b]">
         Indexed Documents
       </h2>
@@ -59,12 +59,12 @@ export function DocumentList({ sessionId, refreshKey }: DocumentListProps) {
       )}
 
       {docs.length === 0 ? (
-        <div className="flex flex-col items-center gap-2 rounded-lg border border-dashed border-[#2a2d3a] py-8 text-center">
+        <div className="flex flex-col items-center gap-2 rounded-lg border border-dashed border-[#2a2d3a] py-6 text-center">
           <Upload className="h-6 w-6 text-[#64748b]" />
           <p className="text-xs text-[#64748b]">No documents indexed</p>
         </div>
       ) : (
-        <ScrollArea className="h-[280px]">
+        <ScrollArea className="min-h-0 flex-1 h-0">
           <ul className="flex flex-col gap-1 pr-3">
             {docs.map((doc) => (
               <li
