@@ -16,6 +16,12 @@ const geistMono = Geist_Mono({
 export const metadata: Metadata = {
   title: "RAG Portfolio",
   description: "AI-powered document Q&A — Retrieval-Augmented Generation demo",
+  icons: { icon: "/icon.svg" },
+  openGraph: {
+    title: "RAG Portfolio",
+    description: "AI-powered document Q&A — Retrieval-Augmented Generation demo",
+    type: "website",
+  },
 };
 
 export default function RootLayout({
