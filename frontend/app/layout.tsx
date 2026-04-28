@@ -21,6 +21,7 @@ export const metadata: Metadata = {
     title: "RAG Portfolio",
     description: "AI-powered document Q&A — Retrieval-Augmented Generation demo",
     type: "website",
+    images: [{ url: "/icon.svg" }],
   },
 };
 
