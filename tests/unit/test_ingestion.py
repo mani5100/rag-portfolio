@@ -57,41 +57,45 @@ def test_file_too_large_raises(tmp_path, monkeypatch):
 
 @pytest.mark.unit
 def test_pdf_loader_dispatches_correctly(tmp_path, monkeypatch):
-    """PDF files should dispatch to PyPDFLoader."""
+    """PDF files should use PdfReader with per-page extraction."""
     pdf_file = tmp_path / "sample.pdf"
     pdf_file.write_bytes(b"%PDF-1.4 fake pdf content")
 
-    fake_doc = Document(page_content="PDF content here", metadata={})
-    mock_loader_instance = MagicMock()
-    mock_loader_instance.load.return_value = [fake_doc]
-    mock_loader_class = MagicMock(return_value=mock_loader_instance)
+    fake_page = MagicMock()
+    fake_page.extract_text.return_value = "PDF content here"
+    mock_reader_instance = MagicMock()
+    mock_reader_instance.pages = [fake_page]
+    mock_reader_class = MagicMock(return_value=mock_reader_instance)
 
-    monkeypatch.setattr("rag_porfolio.ingestion.PyPDFLoader", mock_loader_class)
+    monkeypatch.setattr("rag_porfolio.ingestion.PdfReader", mock_reader_class)
 
     docs = load_document(str(pdf_file))
 
-    mock_loader_class.assert_called_once_with(str(pdf_file))
+    mock_reader_class.assert_called_once_with(str(pdf_file), strict=False)
     assert len(docs) == 1
+    assert "PDF content here" in docs[0].page_content
     assert docs[0].metadata["source"] == "sample.pdf"
 
 
 @pytest.mark.unit
 def test_docx_loader_dispatches_correctly(tmp_path, monkeypatch):
-    """DOCX files should dispatch to UnstructuredWordDocumentLoader with mode='elements'."""
+    """DOCX files should use python-docx (DocxDocument) to extract paragraph text."""
     docx_file = tmp_path / "sample.docx"
     docx_file.write_bytes(b"PK fake docx content")
 
-    fake_doc = Document(page_content="DOCX content here", metadata={})
-    mock_loader_instance = MagicMock()
-    mock_loader_instance.load.return_value = [fake_doc]
-    mock_loader_class = MagicMock(return_value=mock_loader_instance)
+    fake_paragraph = MagicMock()
+    fake_paragraph.text = "DOCX content here"
+    mock_docx_instance = MagicMock()
+    mock_docx_instance.paragraphs = [fake_paragraph]
+    mock_docx_class = MagicMock(return_value=mock_docx_instance)
 
-    monkeypatch.setattr("rag_porfolio.ingestion.UnstructuredWordDocumentLoader", mock_loader_class)
+    monkeypatch.setattr("rag_porfolio.ingestion.DocxDocument", mock_docx_class)
 
     docs = load_document(str(docx_file))
 
-    mock_loader_class.assert_called_once_with(str(docx_file), mode="elements")
+    mock_docx_class.assert_called_once_with(str(docx_file))
     assert len(docs) == 1
+    assert "DOCX content here" in docs[0].page_content
     assert docs[0].metadata["source"] == "sample.docx"
 
 

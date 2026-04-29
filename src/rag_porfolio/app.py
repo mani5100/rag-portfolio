@@ -189,6 +189,8 @@ async def upload_document(
         tmp_path = tmp.name
     try:
         docs = load_document(tmp_path)
+        for doc in docs:
+            doc.metadata["source"] = filename
         chunks = chunk_documents(docs)
         sess.store.add_documents(chunks)
     finally:

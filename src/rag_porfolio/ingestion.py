@@ -12,10 +12,11 @@ from __future__ import annotations
 import os
 from pathlib import Path
 
+from docx import Document as DocxDocument
+from pypdf import PdfReader
+from pdfminer.high_level import extract_text as pdfminer_extract_text
 from langchain_community.document_loaders import (
-    PyPDFLoader,
     TextLoader,
-    UnstructuredWordDocumentLoader,
 )
 from langchain_core.documents import Document
 from langchain_text_splitters import RecursiveCharacterTextSplitter
@@ -71,9 +72,52 @@ def load_document(file_path: str) -> list[Document]:
     ext = Path(file_path).suffix.lower()
 
     if ext == ".pdf":
-        loader = PyPDFLoader(file_path)
+        try:
+            reader = PdfReader(file_path, strict=False)
+            pages = []
+            for i, page in enumerate(reader.pages):
+                try:
+                    text = page.extract_text() or ""
+                except Exception:
+                    text = ""
+                pages.append(Document(page_content=text, metadata={"page": i}))
+            documents = [p for p in pages if p.page_content.strip()]
+            if not documents:
+                # Fallback: try pdfminer which handles more PDF variants
+                try:
+                    text = pdfminer_extract_text(file_path)
+                except Exception as exc:
+                    raise IngestionError(
+                        f"Failed to load document '{file_path}': no extractable text found in PDF."
+                    ) from exc
+                if not text or not text.strip():
+                    raise IngestionError(
+                        f"Failed to load document '{file_path}': no extractable text found in PDF."
+                    )
+                documents = [Document(page_content=text, metadata={})]
+        except IngestionError:
+            raise
+        except Exception as exc:
+            raise IngestionError(
+                f"Failed to load document '{file_path}': {exc}"
+            ) from exc
+        basename = os.path.basename(file_path)
+        for doc in documents:
+            doc.metadata["source"] = basename
+        return documents
     elif ext == ".docx":
-        loader = UnstructuredWordDocumentLoader(file_path, mode="elements")
+        try:
+            docx = DocxDocument(file_path)
+            text = "\n".join(p.text for p in docx.paragraphs if p.text.strip())
+            documents = [Document(page_content=text, metadata={})]
+        except Exception as exc:
+            raise IngestionError(
+                f"Failed to load document '{file_path}': {exc}"
+            ) from exc
+        basename = os.path.basename(file_path)
+        for doc in documents:
+            doc.metadata["source"] = basename
+        return documents
     elif ext == ".txt":
         loader = TextLoader(file_path)
     else:

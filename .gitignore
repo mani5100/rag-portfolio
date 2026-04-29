@@ -10,8 +10,9 @@ wheels/
 .venv
 
 # Environment secrets
-.env
 
+.env
+docs/
 # Project-specific ignored directories
 uploads/
 vectorstore/
